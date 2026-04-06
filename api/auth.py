@@ -372,6 +372,37 @@ def update_email():
     return jsonify({"access_token": token, "token_type": "bearer"})
 
 
+# ── Update Name ───────────────────────────────────────────────────────────────
+
+@auth_bp.put("/me/name")
+@require_auth
+def update_name():
+    data = request.get_json(silent=True) or {}
+    new_name = data.get("name", "").strip()
+
+    if not new_name:
+        return jsonify({"error": "name is required"}), 400
+
+    if len(new_name) < 3:
+        return jsonify({"error": "Full name must be at least 3 characters long"}), 400
+
+    if any(char.isdigit() for char in new_name):
+        return jsonify({"error": "Full name cannot contain numbers"}), 400
+
+    user_id = g.current_user["id"]
+    db = get_db()
+    
+    with db.cursor() as cursor:
+        cursor.execute(
+            "UPDATE users SET name = %s WHERE id = %s",
+            (new_name, user_id),
+        )
+        db.commit()
+
+    logger.info(f"User {user_id} updated name to {new_name}")
+    return jsonify({"message": "Name updated successfully", "name": new_name})
+
+
 # ── Update Password ───────────────────────────────────────────────────────────
 
 @auth_bp.put("/me/password")
